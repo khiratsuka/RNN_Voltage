@@ -18,24 +18,24 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 CLASS_NAMES_DICT = {'mage':0, 'nobashi':1}
 CLASS_ID = [0, 1]
 CLASS_NAMES = ['mage', 'nobashi']
+num_class_num = 2
 
 class MyRNN(nn.Module):
     def __init__(self):
         super(MyRNN, self).__init__()
-        self.input_size = 25000
+        self.input_size = 100
         self.hidden_size = 512
         #self.rnn_layers = 512
-        self.num_classes = 2
+        self.num_classes = num_class_num
         self.rnn = nn.RNN(input_size = self.input_size,
                           hidden_size = self.hidden_size,
                           #rnn_layers = self.rnn_layers,
                           batch_first=True)
         self.fc = nn.Linear(self.hidden_size, self.num_classes)
-        self.softmax = torch.nn.Softmax(dim=1)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         #batch_size = x.shape[0]
-        x = x.to(device)
         x_rnn, hidden = self.rnn(x, None)
         x = self.fc(x_rnn[:, -1, :])
         x = self.softmax(x)
@@ -55,27 +55,32 @@ class EMGDataset(Dataset):
 
     def __getitem__(self, idx):
         emg_data_path, correct_class = self.emg_data_path[idx], self.correct_class[idx]
-        list_correct_class = []
-        list_correct_class.append(correct_class)
-        max_data_sampling_num = 24000
-        plus_data = 0.5
+        max_data_sampling_num = 25000
+        append_num_data = 0.5
+        seq_batch_size = 100
+        seq_batch_num = int(max_data_sampling_num / seq_batch_size)
 
         #loading data
         emg_data = np.loadtxt(emg_data_path, delimiter='\n')
+        emg_data = np.reshape(emg_data, (emg_data.shape[0], 1))
 
         #EMGのデータ長を揃える
         #基準値に達していなかったら前padding, 超えていたら後ろのデータをカット
         over_data_num = max_data_sampling_num - len(emg_data)
         if over_data_num > 0:
-            plus_data_list = []
-            for i in range(over_data_num):
-                plus_data_list.append(plus_data)
-            emg_data = [*plus_data_list, *emg_data]
+            append_array = np.full((over_data_num, 1), append_num_data)
+            emg_data = np.append(append_array, emg_data, axis=0)
         elif over_data_num < 0:
-            del emg_data[over_data_num:]
+            emg_data = np.delete(emg_data, slice(over_data_num, None), 0)
+
+        #RNNの入力は[シーケンシャルデータ(バッチ)の個数, サイズ, データ]であるから, reshape
+        emg_data = np.reshape(emg_data, (seq_batch_num, seq_batch_size))
+        #シーケンシャルデータの個数分の正解データを用意
+        array_correct_class = np.full((num_class_num), 0.0)
+        array_correct_class[correct_class] = 1.0
 
         tensor_emg_data = torch.FloatTensor(emg_data)
-        tensor_correct_class = torch.LongTensor(list_correct_class)
+        tensor_correct_class = torch.FloatTensor(array_correct_class)
         return tensor_emg_data, tensor_correct_class
 
     def __len__(self):
@@ -120,10 +125,11 @@ def main():
     Val_dataset_size = len(Train_EMG_Dataset) - Train_dataset_size
     Train_EMG_Dataset, Val_EMG_Dataset = torch.utils.data.random_split(Train_EMG_Dataset, [Train_dataset_size, Val_dataset_size])
 
+
     Train_DataLoader = DataLoader(Train_EMG_Dataset,
                                   batch_size=Batch_size,
                                   shuffle=True,
-                                  num_workers=2,
+                                  num_workers=1,
                                   drop_last=True,
                                   pin_memory=True)
     Val_DataLoader   = DataLoader(Val_EMG_Dataset,
@@ -145,15 +151,15 @@ def main():
         'val_loss':[],
         'val_acc':[]
     }
-    criterion = F.cross_entropy
+    criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(params=net.parameters(), lr=LearningRate)
 
+    print('train start.\n')
     for epoch in range(Num_epochs):
         #train phase
         net.train()
         temp_train_loss = 0
-        for batch in Train_DataLoader:
-            data, label = batch
+        for data, label in Train_DataLoader:
             data = data.to(device)
             label = label.to(device)
 
@@ -172,15 +178,19 @@ def main():
         with torch.no_grad():
             for batch in Val_DataLoader:
                 data, label = batch
-
                 preds = net(data)
                 loss = criterion(preds, label)
                 label_preds = torch.argmax(preds, dim=1)
                 temp_val_loss += loss.item()
-                temp_val_acc += torch.sum(labem_preds == label)
+                temp_val_acc += torch.sum(label_preds == label)
             history['val_loss'].append(temp_val_loss/len(Val_DataLoader))
             history['val_acc'].append(temp_val_acc/len(Val_DataLoader))
-        print(history)
-        
+
+        print('----{} epochs----'.format(epoch))
+        print('train_loss : ' + str(history['train_loss'][epoch]))
+        print('val_loss : ' + str(history['val_loss'][epoch]))
+        print('val_acc : ' + str(history['val_acc'][epoch]))
+        print('\n')
+
 if __name__ == '__main__':
     main()
