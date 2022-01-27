@@ -170,13 +170,14 @@ def main():
                 preds = net(data)
                 loss = criterion(preds, label)
                 label_preds = torch.argmax(preds, dim=1)
+                print(label_preds[0][0])
                 loss.backward()
                 temp_train_loss += loss.item()
                 temp_train_acc +=torch.sum(label_preds == label)
                 optimizer.step()
-                history['train_loss'].append(temp_train_loss/len(Train_DataLoader))
-                history['train_acc'].append(temp_train_acc/len(Train_DataLoader))
                 progress_bar.update(1)
+            history['train_loss'].append(temp_train_loss/len(Train_DataLoader))
+            history['train_acc'].append(temp_train_acc/len(Train_DataLoader))
 
         #validation phase
         net.eval()
@@ -192,13 +193,13 @@ def main():
                     label_preds = torch.argmax(preds, dim=1)
                     temp_val_loss += loss.item()
                     temp_val_acc += torch.sum(label_preds == label)
-                    history['val_loss'].append(temp_val_loss/len(Val_DataLoader))
-                    history['val_acc'].append(temp_val_acc/len(Val_DataLoader))
                     progress_bar.update(1)
+        history['val_loss'].append(temp_val_loss/len(Val_DataLoader))
+        history['val_acc'].append(temp_val_acc/len(Val_DataLoader))
 
         print('----{} epochs----'.format(epoch))
         print('train_loss : ' + str(history['train_loss'][epoch]))
-        print('train_acc : ' + str(history['train_loss'][epoch]))
+        print('train_acc : ' + str(history['train_acc'][epoch]))
         print('val_loss : ' + str(history['val_loss'][epoch]))
         print('val_acc : ' + str(history['val_acc'][epoch]))
         print('\n')
@@ -214,16 +215,16 @@ def main():
                 loss = criterion(preds, label)
                 label_preds = torch.argmax(preds, dim=1)
                 test_acc += torch.sum(label_preds == label)
-                test_acc = test_acc/len(Test_DataLoader)
                 progress_bar.update(1)
+    test_acc = test_acc/len(Test_DataLoader)
     print('test_acc = {}'.format(test_acc))
 
     #history = history.to('cpu').detach().numpy().copy()
-    print(history['train_loss'])
-    print(history['train_acc'])
-    print(history['val_loss'])
-    print(history['val_acc'])
-    
+    #print(history['train_loss'])
+    #print(history['train_acc'])
+    #print(history['val_loss'])
+    #print(history['val_acc'])
+
     metrics = ['loss', 'acc']
     plt.figure(figsize=(10, 5))
     for i in range(len(metrics)):
