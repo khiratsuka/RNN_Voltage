@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import datetime
 import torch
 import matplotlib.pyplot as plt
 
@@ -53,6 +54,7 @@ test1 = [*a, *b]
 print(test0)
 print(test1)
 """
+"""
 history = {
     'train_loss':[1, 2, 3],
     'train_acc':[1, 2, 3],
@@ -73,3 +75,7 @@ for i in range(len(metrics)):
     plt.plot(plt_val,   label='val')
     plt.legend()
 plt.show()
+"""
+now = datetime.datetime.now()
+name = now.strftime("%Y_%m_%d_%H%M%S") + '_eval.png'
+print(name)
