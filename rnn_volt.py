@@ -125,7 +125,6 @@ def main():
     Val_dataset_size = len(Train_EMG_Dataset) - Train_dataset_size
     Train_EMG_Dataset, Val_EMG_Dataset = torch.utils.data.random_split(Train_EMG_Dataset, [Train_dataset_size, Val_dataset_size])
 
-
     Train_DataLoader = DataLoader(Train_EMG_Dataset,
                                   batch_size=Batch_size,
                                   shuffle=True,
@@ -170,14 +169,16 @@ def main():
                 preds = net(data)
                 loss = criterion(preds, label)
                 label_preds = torch.argmax(preds, dim=1)
-                print(label_preds[0][0])
+                label_correct = torch.argmax(label, dim=1)
+                for bn in range(len(label_correct)):
+                    temp_train_acc = 1 + temp_train_acc if label_preds[bn] == label_correct[bn] else temp_train_acc
                 loss.backward()
                 temp_train_loss += loss.item()
-                temp_train_acc +=torch.sum(label_preds == label)
                 optimizer.step()
                 progress_bar.update(1)
-            history['train_loss'].append(temp_train_loss/len(Train_DataLoader))
-            history['train_acc'].append(temp_train_acc/len(Train_DataLoader))
+
+            history['train_loss'].append(temp_train_loss/Train_dataset_size)
+            history['train_acc'].append(temp_train_acc/Train_dataset_size)
 
         #validation phase
         net.eval()
@@ -191,11 +192,13 @@ def main():
                     preds = net(data)
                     loss = criterion(preds, label)
                     label_preds = torch.argmax(preds, dim=1)
+                    label_correct = torch.argmax(label, dim=1)
                     temp_val_loss += loss.item()
-                    temp_val_acc += torch.sum(label_preds == label)
+                    for bn in range(len(label_correct)):
+                        temp_val_acc = 1 + temp_val_acc if label_preds[bn] == label_correct[bn] else temp_val_acc
                     progress_bar.update(1)
-        history['val_loss'].append(temp_val_loss/len(Val_DataLoader))
-        history['val_acc'].append(temp_val_acc/len(Val_DataLoader))
+        history['val_loss'].append(temp_val_loss/Val_dataset_size)
+        history['val_acc'].append(temp_val_acc/Val_dataset_size)
 
         print('----{} epochs----'.format(epoch))
         print('train_loss : ' + str(history['train_loss'][epoch]))
@@ -214,9 +217,11 @@ def main():
                 preds = net(data)
                 loss = criterion(preds, label)
                 label_preds = torch.argmax(preds, dim=1)
-                test_acc += torch.sum(label_preds == label)
+                label_correct = torch.argmax(label, dim=1)
+                for bn in range(len(label_correct)):
+                    test_acc = 1 + test_acc if label_preds[bn] == label_correct[bn] else test_acc
                 progress_bar.update(1)
-    test_acc = test_acc/len(Test_DataLoader)
+    test_acc = test_acc/len(Test_EMG_Dataset)
     print('test_acc = {}'.format(test_acc))
 
     #history = history.to('cpu').detach().numpy().copy()
