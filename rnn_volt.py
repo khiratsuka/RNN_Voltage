@@ -1,5 +1,6 @@
 # coding: utf-8
 import os
+import datetime
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -32,13 +33,13 @@ class MyRNN(nn.Module):
                           #rnn_layers = self.rnn_layers,
                           batch_first=True)
         self.fc = nn.Linear(self.hidden_size, self.num_classes)
-        self.softmax = nn.Softmax(dim=1)
+        #self.sigmoid = torch.sigmoid(dim=1)
 
     def forward(self, x):
         #batch_size = x.shape[0]
         x_rnn, hidden = self.rnn(x, None)
         x = self.fc(x_rnn[:, -1, :])
-        x = self.softmax(x)
+        x = torch.sigmoid(x)
         return x
 
 
@@ -110,7 +111,10 @@ class EMGDataset(Dataset):
 
 
 def main():
-    dataset_folder = './dataset'
+    dataset_folder = './dataset/'
+    result_folder = './result/'
+    if not os.path.exists(result_folder):
+        os.makedirs(result_folder)
     Batch_size = 2
     Num_epochs = 100
     LearningRate = 0.001
@@ -151,7 +155,7 @@ def main():
         'val_loss':[],
         'val_acc':[]
     }
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCELoss()
     optimizer = optim.Adam(params=net.parameters(), lr=LearningRate)
 
     print('train start.\n')
@@ -243,6 +247,8 @@ def main():
         plt.plot(plt_val,   label='val')
         plt.legend()
 
-    plt.show()
+    now = datetime.datetime()
+    fname = datetime_format.strftime("%Y_%m_%d_%H%M%S") + '_eval.png'
+    plt.savefig(result_folder+fname)
 if __name__ == '__main__':
     main()
