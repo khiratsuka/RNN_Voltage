@@ -246,7 +246,7 @@ def main():
         plt.legend()
 
     now = datetime.datetime.now()
-    fname = datetime.strftime("%Y_%m_%d_%H%M%S") + '_eval.png'
+    fname = now.strftime("%Y_%m_%d_%H%M%S") + '_eval.png'
     plt.savefig(result_folder+fname)
 if __name__ == '__main__':
     main()
