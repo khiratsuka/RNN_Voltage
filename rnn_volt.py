@@ -8,8 +8,8 @@ from torch import optim
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from torch.utils.data import TensorDataset
-import numpy as np
-#import matplotlib.pyplot as plt
+from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 #If GPU is available, use it
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -148,6 +148,7 @@ def main():
     net = MyRNN().to(device)
     history = {
         'train_loss':[],
+        'train_acc':[],
         'val_loss':[],
         'val_acc':[]
     }
@@ -159,38 +160,79 @@ def main():
         #train phase
         net.train()
         temp_train_loss = 0
-        for data, label in Train_DataLoader:
-            data = data.to(device)
-            label = label.to(device)
+        temp_train_acc = 0
+        with tqdm(total=len(Train_DataLoader), unit='batch', desc='{}/{} epochs [Train]'.format(epoch+1, Num_epochs)) as progress_bar:
+            for data, label in Train_DataLoader:
+                data = data.to(device)
+                label = label.to(device)
 
-            optimizer.zero_grad()
-            preds = net(data)
-            loss = criterion(preds, label)
-            loss.backward()
-            temp_train_loss += loss.item()
-            optimizer.step()
-        history['train_loss'].append(temp_train_loss/len(Train_DataLoader))
+                optimizer.zero_grad()
+                preds = net(data)
+                loss = criterion(preds, label)
+                label_preds = torch.argmax(preds, dim=1)
+                loss.backward()
+                temp_train_loss += loss.item()
+                temp_train_acc +=torch.sum(label_preds == label)
+                optimizer.step()
+                history['train_loss'].append(temp_train_loss/len(Train_DataLoader))
+                history['train_acc'].append(temp_train_acc/len(Train_DataLoader))
+                progress_bar.update(1)
 
         #validation phase
         net.eval()
         temp_val_loss = 0
         temp_val_acc = 0
-        with torch.no_grad():
-            for batch in Val_DataLoader:
-                data, label = batch
-                preds = net(data)
-                loss = criterion(preds, label)
-                label_preds = torch.argmax(preds, dim=1)
-                temp_val_loss += loss.item()
-                temp_val_acc += torch.sum(label_preds == label)
-            history['val_loss'].append(temp_val_loss/len(Val_DataLoader))
-            history['val_acc'].append(temp_val_acc/len(Val_DataLoader))
+        with tqdm(total=len(Val_DataLoader), unit='batch', desc='{}/{} epochs [Val]'.format(epoch+1, Num_epochs)) as progress_bar:
+            with torch.no_grad():
+                for data, label in Val_DataLoader:
+                    data = data.to(device)
+                    label = label.to(device)
+                    preds = net(data)
+                    loss = criterion(preds, label)
+                    label_preds = torch.argmax(preds, dim=1)
+                    temp_val_loss += loss.item()
+                    temp_val_acc += torch.sum(label_preds == label)
+                    history['val_loss'].append(temp_val_loss/len(Val_DataLoader))
+                    history['val_acc'].append(temp_val_acc/len(Val_DataLoader))
+                    progress_bar.update(1)
 
         print('----{} epochs----'.format(epoch))
         print('train_loss : ' + str(history['train_loss'][epoch]))
+        print('train_acc : ' + str(history['train_loss'][epoch]))
         print('val_loss : ' + str(history['val_loss'][epoch]))
         print('val_acc : ' + str(history['val_acc'][epoch]))
         print('\n')
 
+    net.eval()
+    test_acc = 0
+    with tqdm(total=len(Test_DataLoader), unit='batch', desc='{}/{} epochs [Val]'.format(epoch+1, Num_epochs)) as progress_bar:
+        with torch.no_grad():
+            for data, label in Test_DataLoader:
+                data = data.to(device)
+                label = label.to(device)
+                preds = net(data)
+                loss = criterion(preds, label)
+                label_preds = torch.argmax(preds, dim=1)
+                test_acc += torch.sum(label_preds == label)
+                test_acc = test_acc/len(Test_DataLoader)
+                progress_bar.update(1)
+    print('test_acc = {}'.format(test_acc))
+
+    #history = history.to('cpu').detach().numpy().copy()
+
+    metrics = ['loss', 'acc']
+    plt.figure(figsize=(10, 5))
+    for i in range(len(metrics)):
+        metric = metrics[i]
+
+        plt.subplot(1, 2, i+1)
+        plt.title(metric)
+        plt_train = history['train_' + metric]
+        plt_val   = history['val_'   + metric]
+        plt.plot(plt_train, label='train')
+        plt.plot(plt_val,   label='val')
+        plt.legend()
+
+    plt.show()
 if __name__ == '__main__':
     main()
