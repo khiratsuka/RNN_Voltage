@@ -33,10 +33,8 @@ class MyRNN(nn.Module):
                           #rnn_layers = self.rnn_layers,
                           batch_first=True)
         self.fc = nn.Linear(self.hidden_size, self.num_classes)
-        #self.sigmoid = torch.sigmoid(dim=1)
 
     def forward(self, x):
-        #batch_size = x.shape[0]
         x_rnn, hidden = self.rnn(x, None)
         x = self.fc(x_rnn[:, -1, :])
         x = torch.sigmoid(x)
