@@ -210,7 +210,7 @@ def main():
         print('\n')
 
     net.eval()
-    test_acc = 0
+    test_acc = 0.0
     with tqdm(total=len(Test_DataLoader), unit='batch', desc='{}/{} epochs [Val]'.format(epoch+1, Num_epochs)) as progress_bar:
         with torch.no_grad():
             for data, label in Test_DataLoader:
@@ -245,8 +245,8 @@ def main():
         plt.plot(plt_val,   label='val')
         plt.legend()
 
-    now = datetime.datetime()
-    fname = datetime_format.strftime("%Y_%m_%d_%H%M%S") + '_eval.png'
+    now = datetime.datetime.now()
+    fname = datetime.strftime("%Y_%m_%d_%H%M%S") + '_eval.png'
     plt.savefig(result_folder+fname)
 if __name__ == '__main__':
     main()
