@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 
 """
 test = sorted([s for s in os.listdir('./dataset/mage/train') if s.endswith('csv')])
@@ -59,9 +60,6 @@ history = {
     'val_acc':[4, 5, 6]
 }
 
-history = torch.from_numpy(history).clone()
-history = history.to('cuda')
-history = history.to('cpu').detach().numpy().copy()
 metrics = ['loss', 'acc']
 plt.figure(figsize=(10, 5))
 for i in range(len(metrics)):

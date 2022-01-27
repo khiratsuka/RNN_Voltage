@@ -219,7 +219,11 @@ def main():
     print('test_acc = {}'.format(test_acc))
 
     #history = history.to('cpu').detach().numpy().copy()
-
+    print(history['train_loss'])
+    print(history['train_acc'])
+    print(history['val_loss'])
+    print(history['val_acc'])
+    
     metrics = ['loss', 'acc']
     plt.figure(figsize=(10, 5))
     for i in range(len(metrics)):
