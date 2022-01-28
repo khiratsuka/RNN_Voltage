@@ -20,17 +20,18 @@ CLASS_NAMES_DICT = {'mage':0, 'nobashi':1}
 CLASS_ID = [0, 1]
 CLASS_NAMES = ['mage', 'nobashi']
 num_class_num = 2
+seq_batch_size = 5000
 
 class MyRNN(nn.Module):
     def __init__(self):
         super(MyRNN, self).__init__()
-        self.input_size = 100
-        self.hidden_size = 512
-        #self.rnn_layers = 512
+        self.input_size = seq_batch_size
+        self.hidden_size = 8192
+        self.rnn_layers = 2
         self.num_classes = num_class_num
         self.rnn = nn.RNN(input_size = self.input_size,
                           hidden_size = self.hidden_size,
-                          #rnn_layers = self.rnn_layers,
+                          num_layers = self.rnn_layers,
                           batch_first=True)
         self.fc = nn.Linear(self.hidden_size, self.num_classes)
 
@@ -56,7 +57,6 @@ class EMGDataset(Dataset):
         emg_data_path, correct_class = self.emg_data_path[idx], self.correct_class[idx]
         max_data_sampling_num = 25000
         append_num_data = 0.5
-        seq_batch_size = 100
         seq_batch_num = int(max_data_sampling_num / seq_batch_size)
 
         #loading data
