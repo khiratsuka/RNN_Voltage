@@ -1,6 +1,7 @@
 # coding: utf-8
 import os
 import datetime
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -20,20 +21,34 @@ CLASS_NAMES_DICT = {'mage':0, 'nobashi':1}
 CLASS_ID = [0, 1]
 CLASS_NAMES = ['mage', 'nobashi']
 num_class_num = 2
-seq_batch_size = 5000
+seq_batch_size = 100
 
 class MyRNN(nn.Module):
     def __init__(self):
         super(MyRNN, self).__init__()
         self.input_size = seq_batch_size
-        self.hidden_size = 8192
-        self.rnn_layers = 2
+        self.hidden_size = 4096
+        self.rnn_layers = 1
         self.num_classes = num_class_num
         self.rnn = nn.RNN(input_size = self.input_size,
                           hidden_size = self.hidden_size,
                           num_layers = self.rnn_layers,
-                          batch_first=True)
+                          batch_first=True,
+                          dropout=0.5)
         self.fc = nn.Linear(self.hidden_size, self.num_classes)
+
+        nn.init.normal_(self.rnn.weight_ih_l0, std=1/math.sqrt(self.input_size))
+        nn.init.normal_(self.rnn.weight_hh_l0, std=1/math.sqrt(self.hidden_size))
+        nn.init.zeros_(self.rnn.bias_ih_l0)
+        nn.init.zeros_(self.rnn.bias_hh_l0)
+        """
+        nn.init.normal_(self.rnn.weight_ih_l1, std=1/math.sqrt(self.input_size))
+        nn.init.normal_(self.rnn.weight_hh_l1, std=1/math.sqrt(self.hidden_size))
+        nn.init.zeros_(self.rnn.bias_ih_l1)
+        nn.init.zeros_(self.rnn.bias_hh_l1)
+        """
+        nn.init.normal_(self.fc.weight, std=0.01)
+        nn.init.zeros_(self.fc.bias)
 
     def forward(self, x):
         x_rnn, hidden = self.rnn(x, None)
@@ -115,7 +130,7 @@ def main():
         os.makedirs(result_folder)
     Batch_size = 2
     Num_epochs = 100
-    LearningRate = 0.001
+    LearningRate = 0.1
     Train_EMG_Dataset = EMGDataset(emg_data_folder = dataset_folder,
                                    class_name = CLASS_NAMES,
                                    is_train=True)
@@ -169,15 +184,21 @@ def main():
 
                 optimizer.zero_grad()
                 preds = net(data)
+                #print('before:'+str(net.rnn.weight_ih_l0))
+                #print('Preds:'+str(preds)+'\n')
+                #print('label:'+str(label)+'\n')
                 loss = criterion(preds, label)
+                #print('loss:'+str(loss)+'\n')
                 label_preds = torch.argmax(preds, dim=1)
                 label_correct = torch.argmax(label, dim=1)
                 for bn in range(len(label_correct)):
                     temp_train_acc = 1 + temp_train_acc if label_preds[bn] == label_correct[bn] else temp_train_acc
                 loss.backward()
-                temp_train_loss += loss.item()
+                temp_train_loss += loss.item() * data.size(0)
                 optimizer.step()
+                #print('after:'+str(net.rnn.weight_ih_l0))
                 progress_bar.update(1)
+
 
             history['train_loss'].append(temp_train_loss/Train_dataset_size)
             history['train_acc'].append(temp_train_acc/Train_dataset_size)
@@ -192,6 +213,7 @@ def main():
                     data = data.to(device)
                     label = label.to(device)
                     preds = net(data)
+                    #print(preds)
                     loss = criterion(preds, label)
                     label_preds = torch.argmax(preds, dim=1)
                     label_correct = torch.argmax(label, dim=1)
