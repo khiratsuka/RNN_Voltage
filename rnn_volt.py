@@ -91,13 +91,14 @@ class EMGDataset(Dataset):
 
         #RNNの入力は[シーケンシャルデータ(バッチ)の個数, サイズ, データ]であるから, reshape
         emg_data = np.reshape(emg_data, (seq_batch_num, seq_batch_size))
-        #シーケンシャルデータの個数分の正解データを用意
-        array_correct_class = np.full((num_class_num), 0.0)
-        array_correct_class[correct_class] = 1.0
+
+        #正解のクラス番号を入れるarrayを用意
+        #array_correct_class = np.full((1), 0)
+        #array_correct_class[0] = correct_class
 
         tensor_emg_data = torch.FloatTensor(emg_data)
-        tensor_correct_class = torch.FloatTensor(array_correct_class)
-        return tensor_emg_data, tensor_correct_class
+        #tensor_correct_class = torch.LongTensor(array_correct_class)
+        return tensor_emg_data, correct_class
 
     def __len__(self):
         return len(self.emg_data_path)
@@ -132,7 +133,7 @@ def main():
         os.makedirs(result_folder)
     Batch_size = 2
     Num_epochs = 100
-    LearningRate = 0.1
+    LearningRate = 0.01
     Train_EMG_Dataset = EMGDataset(emg_data_folder = dataset_folder,
                                    class_name = CLASS_NAMES,
                                    is_train=True)
@@ -170,7 +171,7 @@ def main():
         'val_loss':[],
         'val_acc':[]
     }
-    criterion = nn.BCELoss()
+    criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(params=net.parameters(), lr=LearningRate)
 
     print('train start.\n')
@@ -187,14 +188,13 @@ def main():
                 optimizer.zero_grad()
                 preds = net(data)
                 #print('before:'+str(net.rnn.weight_ih_l0))
-                print('Preds:'+str(preds)+'\n')
-                print('label:'+str(label)+'\n')
+                #print('Preds:'+str(preds)+'\n')
+                #print('label:'+str(label)+'\n')
                 loss = criterion(preds, label)
                 #print('loss:'+str(loss)+'\n')
                 label_preds = torch.argmax(preds, dim=1)
-                label_correct = torch.argmax(label, dim=1)
-                for bn in range(len(label_correct)):
-                    temp_train_acc = 1 + temp_train_acc if label_preds[bn] == label_correct[bn] else temp_train_acc
+                for bn in range(len(label)):
+                    temp_train_acc = 1 + temp_train_acc if label_preds[bn] == label[bn] else temp_train_acc
                 loss.backward()
                 temp_train_loss += loss.item() * data.size(0)
                 optimizer.step()
@@ -218,10 +218,10 @@ def main():
                     #print(preds)
                     loss = criterion(preds, label)
                     label_preds = torch.argmax(preds, dim=1)
-                    label_correct = torch.argmax(label, dim=1)
+                    #label_correct = torch.argmax(label, dim=1)
                     temp_val_loss += loss.item()
-                    for bn in range(len(label_correct)):
-                        temp_val_acc = 1 + temp_val_acc if label_preds[bn] == label_correct[bn] else temp_val_acc
+                    for bn in range(len(label)):
+                        temp_val_acc = 1 + temp_val_acc if label_preds[bn] == label[bn] else temp_val_acc
                     progress_bar.update(1)
         history['val_loss'].append(temp_val_loss/Val_dataset_size)
         history['val_acc'].append(temp_val_acc/Val_dataset_size)
@@ -243,9 +243,8 @@ def main():
                 preds = net(data)
                 loss = criterion(preds, label)
                 label_preds = torch.argmax(preds, dim=1)
-                label_correct = torch.argmax(label, dim=1)
-                for bn in range(len(label_correct)):
-                    test_acc = 1 + test_acc if label_preds[bn] == label_correct[bn] else test_acc
+                for bn in range(len(label)):
+                    test_acc = 1 + test_acc if label_preds[bn] == label[bn] else test_acc
                 progress_bar.update(1)
     test_acc = test_acc/len(Test_EMG_Dataset)
     print('test_acc = {}'.format(test_acc))
