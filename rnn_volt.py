@@ -36,6 +36,7 @@ class MyRNN(nn.Module):
                           batch_first=True,
                           dropout=0.5)
         self.fc = nn.Linear(self.hidden_size, self.num_classes)
+        self.softmax = nn.Softmax(dim=1)
 
         nn.init.normal_(self.rnn.weight_ih_l0, std=1/math.sqrt(self.input_size))
         nn.init.normal_(self.rnn.weight_hh_l0, std=1/math.sqrt(self.hidden_size))
@@ -53,7 +54,8 @@ class MyRNN(nn.Module):
     def forward(self, x):
         x_rnn, hidden = self.rnn(x, None)
         x = self.fc(x_rnn[:, -1, :])
-        x = torch.sigmoid(x)
+        #x = torch.sigmoid(x)
+        x = self.softmax(x)
         return x
 
 
@@ -185,8 +187,8 @@ def main():
                 optimizer.zero_grad()
                 preds = net(data)
                 #print('before:'+str(net.rnn.weight_ih_l0))
-                #print('Preds:'+str(preds)+'\n')
-                #print('label:'+str(label)+'\n')
+                print('Preds:'+str(preds)+'\n')
+                print('label:'+str(label)+'\n')
                 loss = criterion(preds, label)
                 #print('loss:'+str(loss)+'\n')
                 label_preds = torch.argmax(preds, dim=1)
@@ -233,7 +235,7 @@ def main():
 
     net.eval()
     test_acc = 0.0
-    with tqdm(total=len(Test_DataLoader), unit='batch', desc='{}/{} epochs [Val]'.format(epoch+1, Num_epochs)) as progress_bar:
+    with tqdm(total=len(Test_DataLoader), unit='batch', desc='{}/{} epochs [Test]'.format(epoch+1, Num_epochs)) as progress_bar:
         with torch.no_grad():
             for data, label in Test_DataLoader:
                 data = data.to(device)
