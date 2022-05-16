@@ -322,6 +322,11 @@ def main():
         plt_val   = history['val_'   + metric]
         plt.plot(plt_train, label='train')
         plt.plot(plt_val,   label='val')
+        if metric  == 'loss':
+            plt.xlabel('loss')
+        elif metric == 'acc':
+            plt.xlabel('accuracy')
+        plt.ylabel('epoch')
         plt.legend()
 
     now = datetime.datetime.now()
